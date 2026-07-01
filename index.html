@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Low Signal</title>
+  </head>
+  <body>
+    <div id="app">
+      <!-- Pantalla 0: onboarding interactivo -->
+      <section id="onboarding-screen" class="screen hidden">
+        <button id="onboarding-skip" class="btn btn-ghost onboarding-skip" type="button">Saltar</button>
+
+        <div class="onboarding">
+          <div class="onboarding-progress" id="onboarding-progress"></div>
+
+          <div class="onboarding-step" data-step="0">
+            <h2>cómo funciona</h2>
+            <p>low signal deja pasar tus slides de Canva o PowerPoint con la mano, sin tocar el teclado. Tres pasos, treinta segundos.</p>
+            <button class="btn btn-primary" data-action="next">Empezar</button>
+          </div>
+
+          <div class="onboarding-step hidden" data-step="1">
+            <h2 id="onboarding-camera-title">enciende la cámara</h2>
+            <p id="onboarding-camera-copy">Se procesa en tu navegador. Nada se sube a un servidor.</p>
+
+            <div class="onboarding-camera">
+              <video id="onboarding-video" playsinline autoplay muted></video>
+              <canvas id="onboarding-canvas"></canvas>
+              <div class="onboarding-arrow hidden" id="onboarding-arrow"></div>
+            </div>
+
+            <button id="onboarding-camera-btn" class="btn btn-primary" type="button">Activar cámara</button>
+            <p class="onboarding-hint" id="onboarding-hint"></p>
+          </div>
+
+          <div class="onboarding-step hidden" data-step="4">
+            <h2>listo</h2>
+            <p>También podés controlar Canva o PowerPoint abiertos en otra ventana: activa "Modo remoto" y el gesto se convierte en una tecla real de flecha para lo que tengas enfocado.</p>
+            <button class="btn btn-primary" data-action="finish">Subir mis slides</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Pantalla 1: subir slides -->
+      <section id="upload-screen" class="screen hidden">
+        <header class="brand">
+          <span class="brand-dot"></span>
+          <h1>low signal</h1>
+        </header>
+        <p class="tagline">Controla tus slides de Canva o PowerPoint con la mano, sin tocar el teclado.</p>
+
+        <div id="dropzone" class="dropzone">
+          <p class="dropzone-title">Arrastra tus slides aquí</p>
+          <p class="dropzone-sub">Exporta tu presentación de Canva o PowerPoint como <strong>PDF</strong>, o sube imágenes (PNG/JPG) en orden.</p>
+          <button id="pick-file-btn" class="btn btn-primary" type="button">Elegir archivo</button>
+          <input id="file-input" type="file" accept="application/pdf,image/png,image/jpeg,image/webp" multiple hidden />
+        </div>
+
+        <div class="upload-links">
+          <button id="demo-btn" class="btn btn-ghost" type="button">Probar con slides de demo</button>
+          <button id="replay-onboarding-btn" class="btn btn-ghost" type="button">Ver cómo funciona</button>
+        </div>
+
+        <p id="upload-status" class="status-line" aria-live="polite"></p>
+      </section>
+
+      <!-- Pantalla 2: presentación -->
+      <section id="presenter-screen" class="screen hidden">
+        <div class="stage">
+          <img id="slide-image" alt="Slide actual" />
+          <div id="gesture-toast" class="gesture-toast"></div>
+        </div>
+
+        <button id="prev-btn" class="nav-btn nav-btn-left" type="button" aria-label="Slide anterior">&lsaquo;</button>
+        <button id="next-btn" class="nav-btn nav-btn-right" type="button" aria-label="Slide siguiente">&rsaquo;</button>
+
+        <div class="hud">
+          <div class="hud-left">
+            <span class="brand-dot small"></span>
+            <span class="hud-brand">low signal</span>
+          </div>
+          <div class="hud-center">
+            <span id="slide-counter">1 / 1</span>
+          </div>
+          <div class="hud-right">
+            <span id="gesture-status" class="gesture-status">Cámara apagada</span>
+            <button id="camera-toggle-btn" class="btn btn-small" type="button">Activar cámara</button>
+            <button id="remote-toggle-btn" class="btn btn-small" type="button" title="Envía teclas reales a la ventana activa (Canva, PowerPoint...) vía el puente local">Modo remoto: OFF</button>
+            <button id="fullscreen-btn" class="btn btn-small" type="button">Pantalla completa</button>
+            <button id="exit-btn" class="btn btn-small btn-ghost" type="button">Salir</button>
+          </div>
+        </div>
+
+        <div id="camera-pip" class="camera-pip hidden">
+          <video id="camera-video" playsinline autoplay muted></video>
+          <canvas id="camera-canvas"></canvas>
+          <div class="gesture-legend">⬇️ Anterior &nbsp;·&nbsp; ⬆️ Siguiente</div>
+        </div>
+      </section>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
