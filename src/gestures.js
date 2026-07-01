@@ -7,9 +7,11 @@ const MODEL_URL =
 const PALM_LANDMARK = 9; // middle finger MCP: punto estable del centro de la palma
 const MIN_HAND_SCORE = 0.5;
 const SWIPE_THRESHOLD = 0.22; // fracción de la altura del cuadro de cámara
-const SWIPE_COOLDOWN_MS = 700;
-const HISTORY_WINDOW_MS = 350;
+const HISTORY_WINDOW_MS = 300;
 const MIN_CONSISTENCY = 0.6; // fracción de tramos que deben moverse en la misma dirección
+const MIN_RETRIGGER_MS = 350; // piso de seguridad entre disparos distintos
+const STILL_EPSILON = 0.012; // cambio por frame que cuenta como "mano quieta"
+const STILL_FRAMES_TO_REARM = 3; // frames quietos seguidos para permitir un nuevo swipe
 
 const CONNECTIONS = [
   [0, 1], [1, 2], [2, 3], [3, 4],
@@ -33,6 +35,9 @@ export class GestureController {
 
     this.history = [];
     this.lastTriggerAt = 0;
+    this.awaitingRelease = false;
+    this.stillStreak = 0;
+    this.lastY = null;
   }
 
   async start() {
@@ -64,6 +69,9 @@ export class GestureController {
     this.landmarker = null;
     this.stream = null;
     this.history = [];
+    this.awaitingRelease = false;
+    this.stillStreak = 0;
+    this.lastY = null;
     this.onStatus('idle', 'Cámara apagada');
   }
 
@@ -87,7 +95,11 @@ export class GestureController {
     const hand = result.landmarks?.[0];
     const handScore = result.handednesses?.[0]?.[0]?.score ?? 1;
     if (!hand || handScore < MIN_HAND_SCORE) {
+      // perder la mano de cuadro también cuenta como el final de un gesto
       this.history = [];
+      this.awaitingRelease = false;
+      this.stillStreak = 0;
+      this.lastY = null;
       this.onStatus('active', 'Buscando mano...');
       return;
     }
@@ -99,11 +111,28 @@ export class GestureController {
 
   trackSwipe(hand) {
     const now = performance.now();
-    this.history.push({ y: hand[PALM_LANDMARK].y, t: now });
+    const y = hand[PALM_LANDMARK].y;
+
+    if (this.lastY !== null) {
+      this.stillStreak = Math.abs(y - this.lastY) < STILL_EPSILON ? this.stillStreak + 1 : 0;
+    }
+    this.lastY = y;
+
+    // Un swipe estilo TikTok es un movimiento continuo que suele durar más
+    // que cualquier cooldown fijo: en vez de temporizar, esperamos a que la
+    // mano se detenga (o salga de cuadro) antes de permitir el próximo swipe,
+    // así un solo gesto largo no dispara dos veces.
+    if (this.awaitingRelease) {
+      if (this.stillStreak < STILL_FRAMES_TO_REARM) return;
+      this.awaitingRelease = false;
+      this.history = [];
+    }
+
+    this.history.push({ y, t: now });
     this.history = this.history.filter((sample) => now - sample.t <= HISTORY_WINDOW_MS);
 
     if (this.history.length < 4) return;
-    if (now - this.lastTriggerAt < SWIPE_COOLDOWN_MS) return;
+    if (now - this.lastTriggerAt < MIN_RETRIGGER_MS) return;
 
     const dy = this.history[this.history.length - 1].y - this.history[0].y;
     if (Math.abs(dy) < SWIPE_THRESHOLD) return;
@@ -116,13 +145,15 @@ export class GestureController {
     if (consistent / (this.history.length - 1) < MIN_CONSISTENCY) return;
 
     this.lastTriggerAt = now;
+    this.awaitingRelease = true;
+    this.stillStreak = 0;
     this.history = [];
     this.onSwipe(dy < 0 ? 'next' : 'prev');
   }
 }
 
 function drawHand(ctx, hand, width, height) {
-  ctx.strokeStyle = '#7dffb3';
+  ctx.strokeStyle = '#eae7e0';
   ctx.lineWidth = 2;
   ctx.beginPath();
   for (const [a, b] of CONNECTIONS) {
@@ -131,7 +162,7 @@ function drawHand(ctx, hand, width, height) {
   }
   ctx.stroke();
 
-  ctx.fillStyle = '#7dffb3';
+  ctx.fillStyle = '#a8402c';
   for (const point of hand) {
     ctx.beginPath();
     ctx.arc(point.x * width, point.y * height, 3, 0, Math.PI * 2);
